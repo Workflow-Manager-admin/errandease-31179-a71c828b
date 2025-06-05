@@ -85,7 +85,7 @@ function MapView({
     // eslint-disable-next-line
   }, [apiKey, googleError, mapRef.current]);
 
-  // Fallback: Google Maps key missing or failed to load
+  // Fallback: Google Maps key missing or failed to load (user-friendly + developer detailed)
   if (!apiKey || googleError) {
     return (
       <div
@@ -111,24 +111,56 @@ function MapView({
         <div style={{ fontWeight: 700, fontSize: "1.16rem", marginBottom: 6 }}>
           Google Maps Integration Not Configured
         </div>
-        <div style={{ color: "#d44c4c", fontSize: "0.98rem", maxWidth: 310, margin: "0 auto 18px auto", textAlign: "center" }}>
-          Set <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> in your <b>.env</b> file and restart the server.<br />
-          {/* Dev instructions */}
-          {/* 
-          How to enable live Google Maps:
-          1. Get an API Key: https://console.cloud.google.com/apis/credentials
-          2. Add to .env: REACT_APP_GOOGLE_MAPS_API_KEY=YOUR_KEY
-          3. Restart `npm start`
-          */}
+        <div style={{
+          color: "#d44c4c",
+          fontSize: "1.04rem",
+          maxWidth: 350,
+          margin: "0 auto 14px auto",
+          textAlign: "center",
+          lineHeight: 1.4
+        }}>
+          {(!apiKey)
+            ? (
+                <>
+                  <strong>To enable Maps:</strong><br />
+                  1. <b>Get a free API Key</b> at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a>.<br />
+                  2. In your <b>.env</b> file (at project root), add:<br />
+                  <code style={{display: "block", padding: "7px 10px", background: "#fff3", borderRadius: 7, color: "#bc2929"}}>REACT_APP_GOOGLE_MAPS_API_KEY=your-api-key-here</code>
+                  3. <b>Save</b> the file & <i>fully restart</i> the dev server:
+                  <ul style={{paddingLeft:22, textAlign:"left", color:"#bc2929"}}>
+                    <li>Stop <code>npm start</code> if running.</li>
+                    <li>Start again: <code>npm start</code></li>
+                  </ul>
+                </>
+              )
+            : (
+                <>
+                  <span role="img" aria-label="sad">⚠️</span> <b>Google Maps could not load.</b>
+                  <br />
+                  Reason: <span style={{color:"#b73a3a"}}>{typeof googleError === "string" ? googleError : "Unknown error."}</span>
+                  <br /><br />
+                  <strong>Check:</strong>
+                  <ul style={{paddingLeft:18, textAlign:"left", color:"#bc2929"}}>
+                    <li>Your <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> in <b>.env</b> is correct, not restricted, and enabled for Maps API.</li>
+                    <li>You <b>fully restarted</b> the dev server after updating your .env file (hot reload will NOT pick up changes).</li>
+                    <li>Your internet connection is working.</li>
+                  </ul>
+                  See project README ("Google Maps Integration & API Key Setup") for troubleshooting.
+                </>
+              )
+          }
         </div>
         <div style={{
           background: "#ffedea",
           borderRadius: 10,
           padding: "8px 14px",
           color: "#bf2a2a",
-          fontSize: "0.96rem"
+          fontSize: "0.96rem",
+          marginTop: 8,
+          textAlign: "center"
         }}>
-          Developer: See MapView.js for setup instructions.
+          <b>Developer Tip:</b> See <code>MapView.js</code> or <code>README.md</code> for setup details.<br />
+          Adding or changing <b>.env</b> always needs a full server restart!
         </div>
       </div>
     );
