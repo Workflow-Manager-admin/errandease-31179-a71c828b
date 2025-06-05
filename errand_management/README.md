@@ -8,6 +8,47 @@ This project provides a minimal React template with a clean, modern UI and minim
 - **Modern UI**: Clean, responsive design with KAVIA brand styling
 - **Fast**: Minimal dependencies for quick loading times
 - **Simple**: Easy to understand and modify
+---
+
+## Google Maps Integration & API Key Setup
+
+This project includes live Google Maps for route planning and errands. **To use the Map features:**
+
+### 1. Obtain a Google Maps JavaScript API Key
+
+- Go to [Google Cloud Console: APIs & Credentials](https://console.cloud.google.com/apis/credentials).
+- Create a new API Key (or use an existing one).
+- Ensure it is enabled for **Maps JavaScript API**.
+- (Optional) Restrict your API key to your app’s origins for security.
+
+### 2. Add the key to your `.env` file
+
+Create or open your `.env` file in the `/errand_management` directory.<br>
+Add this line (use your own key!):
+
+```
+REACT_APP_GOOGLE_MAPS_API_KEY=your-api-key-here
+```
+
+### 3. **Restart your development server**
+
+> ⚠️ After creating or editing `.env`, you **MUST fully stop and re-run** your dev server.  
+> Hot reload will **not** pick up .env changes.
+> 
+> - If running: press <kbd>Ctrl+C</kbd> in your terminal to stop.
+> - Then start again with `npm start`.
+
+### 4. Troubleshooting
+
+If Maps do not appear and you see a warning or error:
+- Double-check your API key is correct and enabled for Maps JavaScript API.
+- Ensure your `.env` line is present (`REACT_APP_GOOGLE_MAPS_API_KEY=...`).
+- Stop the server and restart it.
+- For invalid key errors, see the in-app error message for hints.
+
+See `src/features/map/MapView.js` for further in-code instructions.
+
+---
 
 ## Getting Started
 
