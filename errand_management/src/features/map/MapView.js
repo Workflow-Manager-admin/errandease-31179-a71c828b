@@ -2,15 +2,27 @@ import React, { useEffect, useRef, useState } from "react";
 
 /**
  * MapView displays an interactive Google Map using the Google Maps JavaScript API.
- * If the REACT_APP_GOOGLE_MAPS_API_KEY environment variable is set, a live map is shown.
- * Otherwise, instructions for setup are rendered as a fallback.
- *
+ * 
+ * === GOOGLE MAPS API KEY INTEGRATION ===
+ * 
  * To use this component with a live Google Map:
- * 1. Obtain an API key from https://console.cloud.google.com/apis/credentials.
- * 2. Add it to your environment: REACT_APP_GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
- * 3. Restart your dev server.
- *
- * If the key is missing, you will see fallback instructions.
+ *  1. Obtain a Maps JavaScript API key at: https://console.cloud.google.com/apis/credentials
+ *  2. Create a `.env` file at the *project root* (the same folder as package.json, NOT src/).
+ *     Add:
+ *        REACT_APP_GOOGLE_MAPS_API_KEY=your-api-key-here
+ *  3. **You MUST fully restart the dev server** after adding or updating .env!
+ *     (Hot reload will NOT pick up environment variable changes.)
+ *     - Stop `npm start` (Ctrl+C in terminal), then start again.
+ * 
+ * If the key is missing, invalid, or restricted, a prominent fallback UI is shown
+ * with clear setup & troubleshooting instructions.
+ * 
+ * Further details, troubleshooting, and integration steps are in README.md.
+ * 
+ * == FOR MAINTAINERS ==
+ * This API key check is robust: both absence and plausibility of the variable are checked
+ * before attempting to load Maps JS, and any loading/initialization error 
+ * is surfaced with UI/developer-friendly details. Update guidance here & fallback UI if build integration changes.
  */
 // PUBLIC_INTERFACE
 function MapView({
@@ -22,35 +34,45 @@ function MapView({
 }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
-  const [googleError, setGoogleError] = useState(false);
+  const [googleError, setGoogleError] = useState(""); // error string or blank
 
-  // Use environment variable for API key
-  // NOTE: After updating .env files, you MUST restart the dev server (not just hot reload!)
-  const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  // -- API key check: Check existence, non-blank/non-placeholder string
+  // (Developers sometimes copy paste an actual placeholder apikey line)
+  let apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  const plausibleApiKey =
+    typeof apiKey === "string" &&
+    !!apiKey.trim() &&
+    !["your-api-key-here", "PUT-KEY-HERE", "API_KEY"].includes(apiKey.trim().toUpperCase());
+
+  // Only use key if plausible
+  if (!plausibleApiKey) apiKey = undefined;
 
   useEffect(() => {
-    // Only attempt to load when an API key is set and DOM ref is present.
+    // Only attempt to inject script if a plausible API key and DOM ref, and not re-loading an already loaded script
     if (!apiKey || !mapRef.current || window.google?.maps) return;
 
-    // Add the Google Maps JS API script (only if not already loaded)
     const scriptId = "google-maps-js";
     if (document.getElementById(scriptId)) return;
 
     const script = document.createElement("script");
     script.id = scriptId;
-    script.src =
-      `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
-    script.onerror = () => setGoogleError("Could not load Google Maps script (possible invalid or restricted API key)");
+    script.onerror = () =>
+      setGoogleError(
+        "Could not load the Google Maps JS script. (Invalid or restricted API key – check .env and Maps API access.)"
+      );
 
     document.body.appendChild(script);
 
     script.onload = () => {
       if (!window.google || !window.google.maps) {
-        setGoogleError("Google Maps did not load – check your API key or internet connection!");
+        setGoogleError(
+          "Google Maps JS loaded, but window.google.maps object not found — likely due to invalid API key or internet/firewall issue."
+        );
         return;
       }
-      setGoogleError(false);
+      setGoogleError(""); // success!
     };
 
     // Cleanup script if unmounting
@@ -62,13 +84,13 @@ function MapView({
     // eslint-disable-next-line
   }, [apiKey]);
 
-  // Initialize the map
+  // Map initialization effect
   useEffect(() => {
     if (!apiKey || !mapRef.current || !window.google?.maps || googleError) return;
 
-    // Only initialize once!
+    // Ensure idempotent initialization
     if (!mapInstance.current) {
-      // Basic center (demo: New York City)
+      // Default map center (NYC as demo)
       const center = { lat: 40.7128, lng: -74.006 };
       mapInstance.current = new window.google.maps.Map(mapRef.current, {
         center,
@@ -78,15 +100,15 @@ function MapView({
         fullscreenControl: false,
       });
     }
-    // Optionally: Add markers for errands
-    // You could extend this section to put markers using errands' coordinates.
-    // For now just demo.
-
+    // You could extend this section to add markers for errands with geocoords.
+    // For demo purposes, only custom overlays are shown.
     // eslint-disable-next-line
   }, [apiKey, googleError, mapRef.current]);
 
-  // Fallback: Google Maps key missing or failed to load (user-friendly + developer detailed)
+  // ---- Fallback UI if key missing/invalid or failed load ----
   if (!apiKey || googleError) {
+    const isTrivialKeyMissing = !process.env.REACT_APP_GOOGLE_MAPS_API_KEY ||
+      !plausibleApiKey;
     return (
       <div
         className="map-view-fallback"
@@ -111,62 +133,98 @@ function MapView({
         <div style={{ fontWeight: 700, fontSize: "1.16rem", marginBottom: 6 }}>
           Google Maps Integration Not Configured
         </div>
-        <div style={{
-          color: "#d44c4c",
-          fontSize: "1.04rem",
-          maxWidth: 350,
-          margin: "0 auto 14px auto",
-          textAlign: "center",
-          lineHeight: 1.4
-        }}>
-          {(!apiKey)
-            ? (
-                <>
-                  <strong>To enable Maps:</strong><br />
-                  1. <b>Get a free API Key</b> at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a>.<br />
-                  2. In your <b>.env</b> file (at project root), add:<br />
-                  <code style={{display: "block", padding: "7px 10px", background: "#fff3", borderRadius: 7, color: "#bc2929"}}>REACT_APP_GOOGLE_MAPS_API_KEY=your-api-key-here</code>
-                  3. <b>Save</b> the file & <i>fully restart</i> the dev server:
-                  <ul style={{paddingLeft:22, textAlign:"left", color:"#bc2929"}}>
+        <div
+          style={{
+            color: "#d44c4c",
+            fontSize: "1.04rem",
+            maxWidth: 370,
+            margin: "0 auto 14px auto",
+            textAlign: "center",
+            lineHeight: 1.4
+          }}
+        >
+          {isTrivialKeyMissing ? (
+            <>
+              <strong>How to set up Google Maps:</strong>
+              <ol style={{ textAlign: "left", margin: "7px auto 6px auto", color: "#bc2929" }}>
+                <li>
+                  <b>Get a Maps API key</b> from&nbsp;
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noopener"
+                    style={{ color: "#bc2929" }}
+                  >
+                    Google Cloud Console
+                  </a>
+                  .
+                </li>
+                <li>
+                  In <b>.env</b> file <u>(project root, same folder as package.json)</u>, add:<br />
+                  <code style={{ display: "block", padding: "6px 9px", background: "#fff3", borderRadius: 7, color: "#bc2929" }}>
+                    REACT_APP_GOOGLE_MAPS_API_KEY=your-api-key-here
+                  </code>
+                </li>
+                <li>
+                  <b>Save</b> the file <b>& fully restart</b> the dev server:<br />
+                  <ul style={{ paddingLeft: 18 }}>
                     <li>Stop <code>npm start</code> if running.</li>
-                    <li>Start again: <code>npm start</code></li>
+                    <li>Run <code>npm start</code> again.</li>
                   </ul>
-                </>
-              )
-            : (
-                <>
-                  <span role="img" aria-label="sad">⚠️</span> <b>Google Maps could not load.</b>
-                  <br />
-                  Reason: <span style={{color:"#b73a3a"}}>{typeof googleError === "string" ? googleError : "Unknown error."}</span>
-                  <br /><br />
-                  <strong>Check:</strong>
-                  <ul style={{paddingLeft:18, textAlign:"left", color:"#bc2929"}}>
-                    <li>Your <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> in <b>.env</b> is correct, not restricted, and enabled for Maps API.</li>
-                    <li>You <b>fully restarted</b> the dev server after updating your .env file (hot reload will NOT pick up changes).</li>
-                    <li>Your internet connection is working.</li>
-                  </ul>
-                  See project README ("Google Maps Integration & API Key Setup") for troubleshooting.
-                </>
-              )
-          }
+                </li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <span role="img" aria-label="sad">⚠️</span> <b>Google Maps failed to load.</b>
+              <br />
+              Reason:&nbsp;
+              <span style={{ color: "#b73a3a" }}>
+                {typeof googleError === "string"
+                  ? googleError
+                  : "Unknown error (double-check API key and .env setup)."}
+              </span>
+              <br />
+              <br />
+              <strong>Troubleshooting:</strong>
+              <ul style={{ paddingLeft: 18, textAlign: "left", color: "#bc2929" }}>
+                <li>
+                  API key in <b>.env</b> is correct (not a placeholder) and enabled for <b>Maps JavaScript API</b>.
+                </li>
+                <li>
+                  Your <b>.env</b> file is <u>in the project root</u> (not src/).
+                </li>
+                <li>
+                  You <b>fully restarted</b> the dev server after editing <b>.env</b> (hot reload will NOT pick up env changes).
+                </li>
+                <li>
+                  Your internet/firewall isn't blocking Google's services.
+                </li>
+              </ul>
+              See project <b>README</b> for further setup details.
+            </>
+          )}
         </div>
-        <div style={{
-          background: "#ffedea",
-          borderRadius: 10,
-          padding: "8px 14px",
-          color: "#bf2a2a",
-          fontSize: "0.96rem",
-          marginTop: 8,
-          textAlign: "center"
-        }}>
-          <b>Developer Tip:</b> See <code>MapView.js</code> or <code>README.md</code> for setup details.<br />
-          Adding or changing <b>.env</b> always needs a full server restart!
+        <div
+          style={{
+            background: "#ffedea",
+            borderRadius: 10,
+            padding: "8px 14px",
+            color: "#bf2a2a",
+            fontSize: "0.96rem",
+            marginTop: 8,
+            textAlign: "center"
+          }}
+        >
+          <b>Developer tip:</b> See <code>MapView.js</code> and <code>README.md</code> for setup/troubleshooting.
+          <br />
+          <u>After updating .env, always fully restart dev server.</u>
         </div>
       </div>
     );
   }
 
-  // Render the live Google Map and children overlays
+  // --- Render the working Google Map and overlays ---
   return (
     <div
       className="map-view"
@@ -189,20 +247,25 @@ function MapView({
           height: 380,
           borderRadius: 20,
           position: "absolute",
-          top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 1,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1
         }}
         tabIndex={-1}
         aria-label="Google Map"
       />
-      {/* Overlay children, eg. custom markers (absolute positioned) */}
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 3, // higher than the map canvas
-        pointerEvents: "none"
-      }}>
-        {/* Children must apply pointerEvents: auto if they want to be interactable */}
+      {/* Overlay children, e.g., custom markers/lines */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 3,
+          pointerEvents: "none"
+        }}
+      >
+        {/* For custom overlays/controls: set pointerEvents: auto if you want to capture pointer */}
         {children}
       </div>
     </div>
