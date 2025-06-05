@@ -25,6 +25,7 @@ function MapView({
   const [googleError, setGoogleError] = useState(false);
 
   // Use environment variable for API key
+  // NOTE: After updating .env files, you MUST restart the dev server (not just hot reload!)
   const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
@@ -40,16 +41,15 @@ function MapView({
     script.src =
       `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
-    script.onerror = () => setGoogleError(true);
+    script.onerror = () => setGoogleError("Could not load Google Maps script (possible invalid or restricted API key)");
 
     document.body.appendChild(script);
 
     script.onload = () => {
       if (!window.google || !window.google.maps) {
-        setGoogleError(true);
+        setGoogleError("Google Maps did not load – check your API key or internet connection!");
         return;
       }
-      // Trigger a re-render to initialize the map below
       setGoogleError(false);
     };
 
